@@ -1,170 +1,435 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>桃園區學前教育資源分析 - 民有三街核心區</title>
+    <title>桃園市桃園區學前教育基礎設施分析與地圖導覽</title>
     
-    <!-- Scripts & Styles CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Leaflet Map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-
+    <!-- Custom Styles for Leaflet adjustments -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        #map { height: 100%; width: 100%; z-index: 1; }
-        .custom-div-icon { background: none; border: none; }
+        #map {
+            z-index: 10;
+        }
+        .custom-div-icon {
+            background: transparent;
+            border: none;
+        }
+        .marker-pin {
+            width: 30px;
+            height: 30px;
+            border-radius: 50% 50% 50% 0;
+            background: #0ea5e9;
+            position: absolute;
+            transform: rotate(-45deg);
+            left: 50%;
+            top: 50%;
+            margin: -15px 0 0 -15px;
+            box-shadow: -1px 1px 4px rgba(0,0,0,0.5);
+        }
+        .marker-pin::after {
+            content: '';
+            width: 14px;
+            height: 14px;
+            margin: 8px 0 0 8px;
+            background: #fff;
+            position: absolute;
+            border-radius: 50%;
+        }
+        .marker-pin.home {
+            background: #ef4444; /* Red for home */
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius: 0.75rem;
+        }
     </style>
 </head>
-<body class="bg-slate-50">
-    <div id="root"></div>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+    <!-- Header Section -->
+    <header class="bg-gradient-to-r from-teal-600 to-emerald-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">桃園幼兒園空間與法規分析報告</h1>
+            <p class="text-lg md:text-xl text-teal-100 max-w-3xl">
+                以桃園區民有三街（大有/大業生活圈）為核心，為年輕雙薪家庭嚴選的十間「高性價比、零裁罰、普惠型」公共化教保設施指南。
+            </p>
+        </div>
+    </header>
 
-        const HOME_LOCATION = { lat: 25.0125, lng: 121.3168, name: "您的新家 (民有三街 16 號)" };
+    <!-- Navigation/Anchor Links -->
+    <nav class="bg-white border-b sticky top-0 z-20 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8 h-14 items-center overflow-x-auto whitespace-nowrap">
+                <a href="#map-section" class="text-slate-600 hover:text-teal-600 font-medium transition-colors">空間探索地圖</a>
+                <a href="#table-section" class="text-slate-600 hover:text-teal-600 font-medium transition-colors">綜合評比矩陣</a>
+                <a href="#strategy-section" class="text-slate-600 hover:text-teal-600 font-medium transition-colors">最佳化策略建議</a>
+            </div>
+        </div>
+    </nav>
 
-        const KINDERGARTENS = [
-            { id: 1, name: "大有國小附設幼兒園", type: "公立", lat: 25.0145, lng: 121.3195, commute: "機車約 3 分鐘 / 步行約 12 分鐘", fee: "第一胎 1000 元/月；其餘免繳", reason: "位於大有教育走廊核心，享有政府高額學費減免，財務效益極大化。", features: "政府補助、小學資源共享、環境穩定", link: "https://www.gses.tyc.edu.tw/", category: "finance" },
-            { id: 2, name: "會稽國小附設幼兒園", type: "公立", lat: 25.0095, lng: 121.3125, commute: "機車約 4 分鐘 / 步行約 15 分鐘", fee: "學費免繳；午餐 950 元/月", reason: "收費透明，提供核准制之延長照顧，適合非標準工時家庭。", features: "延長照顧服務、透明財務、小學體系", link: "https://www.kjps.tyc.edu.tw/", category: "flexibility" },
-            { id: 3, name: "新埔非營利幼兒園", type: "非營利", lat: 25.0210, lng: 121.3050, commute: "機車約 7 分鐘", fee: "非營利法定上限", reason: "深度結合「康莊有機聚落」，提供系統性的食農教育。", features: "農業跨域整合、食農教育、專業營運", link: "https://www.facebook.com/xinpu.kindergarten/", category: "ecology" },
-            { id: 4, name: "經國非營利幼兒園", type: "非營利", lat: 25.0280, lng: 121.3020, commute: "機車約 8 分鐘", fee: "非營利法定上限", reason: "三之三基金會營運，強調生命教育與烘焙課程。", features: "生命教育、烘焙課程、親職教育", link: "http://www.3-3life.org.tw/", category: "flexibility" },
-            { id: 5, name: "文華非營利幼兒園", type: "非營利", lat: 25.0185, lng: 121.3285, commute: "機車約 8 分鐘", fee: "非營利法定上限", reason: "注重健康健檢與緊急演練，安全管理嚴格。", features: "健康健檢、安全演練、社區連結", link: "http://www.3-3life.org.tw/", category: "flexibility" },
-            { id: 6, name: "龍祥非營利幼兒園", type: "非營利", lat: 25.0350, lng: 121.3150, commute: "機車約 8 分鐘", fee: "非營利法定上限", reason: "強調飲食教育與大肌肉活動，防疫清潔制度完善。", features: "飲食教育、大肌肉活動、環境清潔", link: "http://www.3-3life.org.tw/", category: "flexibility" },
-            { id: 7, name: "桃園市立桃園幼兒園", type: "公立", lat: 25.0020, lng: 121.3110, commute: "機車約 10 分鐘", fee: "第一胎 1000 元/月；其餘免繳", reason: "全新綠建築，動線串聯鄰近公園，生態環境極佳。", features: "全新綠建築、生態觀賞、現代空間", link: "https://www.tykg.tyc.edu.tw/", category: "ecology" },
-            { id: 8, name: "文德非營利幼兒園", type: "非營利", lat: 24.9850, lng: 121.3250, commute: "機車約 15-20 分鐘", fee: "非營利法定上限", reason: "靖娟家族營運，極度強調交通安全資訊。", features: "交通安全推廣、靖娟家族、家長網絡", link: "https://family.safe.org.tw/27/wende/", category: "flexibility" },
-            { id: 9, name: "大湖非營利幼兒園", type: "非營利", lat: 24.9750, lng: 121.3350, commute: "機車約 15-20 分鐘", fee: "非營利法定上限", reason: "類家庭環境設計，設有專屬健康中心。", features: "類家庭環境、健康中心、情境教學", link: "https://www.facebook.com/dahu.kindergarten/", category: "flexibility" },
-            { id: 10, name: "祥安非營利幼兒園", type: "非營利", lat: 24.9250, lng: 121.2150, commute: "機車約 25 分鐘", fee: "非營利法定上限", reason: "大型全新園所，空間寬敞，強化消防宣導。", features: "全新校舍、消防宣導、大型規模", link: "http://www.3-3life.org.tw/", category: "flexibility" }
-        ];
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
 
-        function App() {
-            const [selectedId, setSelectedId] = useState(null);
-            const [map, setMap] = useState(null);
+        <!-- Map & Details Section -->
+        <section id="map-section" class="scroll-mt-20">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                    微觀移動路徑分析
+                </h2>
+                <span class="bg-red-100 text-red-700 text-sm font-semibold px-3 py-1 rounded-full flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span> 基準點: 民有三街16號
+                </span>
+            </div>
 
-            useEffect(() => {
-                const mapInstance = L.map('map').setView([HOME_LOCATION.lat, HOME_LOCATION.lng], 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Map Container -->
+                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative" style="height: 550px;">
+                    <div id="map" class="w-full h-full"></div>
+                </div>
 
-                // Home Marker
-                const homeIcon = L.divIcon({
-                    html: `<div style="background:#2563eb; color:white; padding:8px; border-radius:50%; border:2px solid white; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>`,
-                    className: 'custom-div-icon', iconSize: [36, 36], iconAnchor: [18, 18]
-                });
-                L.marker([HOME_LOCATION.lat, HOME_LOCATION.lng], { icon: homeIcon }).addTo(mapInstance).bindPopup("您的新家 (民有三街)");
-
-                // KG Markers
-                KINDERGARTENS.forEach(kg => {
-                    const color = kg.type === '公立' ? '#059669' : '#f97316';
-                    const icon = L.divIcon({
-                        html: `<div style="background:${color}; color:white; padding:6px; border-radius:50%; border:2px solid white; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path></svg></div>`,
-                        className: 'custom-div-icon', iconSize: [30, 30], iconAnchor: [15, 15]
-                    });
-                    L.marker([kg.lat, kg.lng], { icon }).addTo(mapInstance).on('click', () => setSelectedId(kg.id));
-                });
-
-                setMap(mapInstance);
-                return () => mapInstance.remove();
-            }, []);
-
-            const selectedKG = KINDERGARTENS.find(k => k.id === selectedId);
-
-            return (
-                <div className="min-h-screen">
-                    <header className="bg-white border-b h-16 flex items-center px-6 sticky top-0 z-[1000]">
-                        <h1 className="font-bold text-xl text-slate-800">桃園幼兒園資訊分析系統</h1>
-                    </header>
-
-                    <main className="max-w-7xl mx-auto px-4 py-8">
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
-                            <div className="lg:col-span-8 flex flex-col gap-4">
-                                <div className="bg-white p-2 rounded-2xl shadow-sm border h-[500px]">
-                                    <div id="map" className="rounded-xl"></div>
-                                </div>
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="bg-white p-4 rounded-xl border">
-                                        <p className="text-xs text-slate-400 font-bold mb-1">精選機構</p>
-                                        <p className="text-2xl font-bold text-emerald-600">10 間</p>
-                                    </div>
-                                    <div className="bg-white p-4 rounded-xl border">
-                                        <p className="text-xs text-slate-400 font-bold mb-1">違規紀錄</p>
-                                        <p className="text-2xl font-bold text-blue-600">0 筆</p>
-                                    </div>
-                                    <div className="bg-white p-4 rounded-xl border">
-                                        <p className="text-xs text-slate-400 font-bold mb-1">最低負擔</p>
-                                        <p className="text-2xl font-bold text-orange-600">0 元/月</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="lg:col-span-4">
-                                <div className="bg-white rounded-2xl shadow-md border overflow-hidden h-full flex flex-col">
-                                    <div className="p-5 border-b bg-slate-50 font-bold">機構詳細資訊</div>
-                                    <div className="p-5 flex-1 overflow-y-auto">
-                                        {selectedKG ? (
-                                            <div className="space-y-4">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${selectedKG.type === '公立' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>{selectedKG.type}</span>
-                                                <h2 className="text-2xl font-bold">{selectedKG.name}</h2>
-                                                <div className="text-sm space-y-2">
-                                                    <p><strong>交通：</strong>{selectedKG.commute}</p>
-                                                    <p><strong>收費：</strong>{selectedKG.fee}</p>
-                                                    <p className="italic text-slate-600 mt-4 border-l-4 border-slate-200 pl-4">{selectedKG.reason}</p>
-                                                </div>
-                                                <div className="pt-4 flex flex-wrap gap-2">
-                                                    {selectedKG.features.split('、').map(f => <span key={f} className="bg-slate-100 px-2 py-1 rounded text-[10px]">{f}</span>)}
-                                                </div>
-                                                <a href={selectedKG.link} target="_blank" className="block w-full bg-slate-900 text-white text-center py-3 rounded-xl font-bold mt-6">前往官網</a>
-                                            </div>
-                                        ) : (
-                                            <div className="text-center py-20 text-slate-400">請點擊地圖上的圖示查看資訊</div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                <!-- Dynamic Detail Panel -->
+                <div class="lg:col-span-1 flex flex-col">
+                    <div id="detail-panel" class="bg-white rounded-2xl shadow-lg border border-teal-100 p-6 flex-grow flex flex-col transition-all duration-300">
+                        <!-- Default empty state -->
+                        <div id="panel-empty" class="text-center my-auto">
+                            <svg class="w-16 h-16 text-slate-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                            <p class="text-slate-500 font-medium">請點擊地圖上的藍色標記<br>以檢視教育機構詳細資訊</p>
                         </div>
 
-                        {/* Table */}
-                        <section className="bg-white rounded-2xl border overflow-hidden shadow-sm">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-50 border-b">
-                                    <tr>
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-400">機構名稱</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-400">類型</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-400">收費基準</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-400">機車通勤</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                    {KINDERGARTENS.map(kg => (
-                                        <tr key={kg.id} onClick={() => setSelectedId(kg.id)} className="cursor-pointer hover:bg-slate-50">
-                                            <td className="px-6 py-4 font-bold">{kg.name}</td>
-                                            <td className="px-6 py-4 text-sm">{kg.type}</td>
-                                            <td className="px-6 py-4 text-sm">{kg.fee}</td>
-                                            <td className="px-6 py-4 text-sm">{kg.commute.split('/')[0]}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </section>
-                    </main>
+                        <!-- Content state (hidden initially) -->
+                        <div id="panel-content" class="hidden flex-col h-full">
+                            <div class="mb-4 flex items-start justify-between">
+                                <div>
+                                    <span id="p-type" class="text-xs font-bold px-2 py-1 bg-teal-100 text-teal-800 rounded uppercase tracking-wider">公立</span>
+                                    <h3 id="p-name" class="text-2xl font-bold text-slate-800 mt-2">大有國小附設幼兒園</h3>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-4 flex-grow">
+                                <div class="flex items-center gap-3 text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <div>
+                                        <div class="text-xs text-slate-400 font-semibold">機車通勤</div>
+                                        <div id="p-commute" class="font-medium text-slate-800">約 3 分鐘</div>
+                                    </div>
+                                </div>
 
-                    <footer className="py-12 text-center text-slate-400 text-xs">
-                        © 2026 桃園幼兒園空間分析報告
-                    </footer>
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1">
+                                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        財務輪廓
+                                    </h4>
+                                    <p id="p-tuition" class="text-slate-600 text-sm leading-relaxed">第一胎1000元/月；其餘免繳</p>
+                                </div>
+
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1">
+                                        <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                                        專屬特色
+                                    </h4>
+                                    <p id="p-features" class="text-slate-600 text-sm leading-relaxed">享政府高額學費減免與教育善好政策補助。</p>
+                                </div>
+
+                                <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-lg">
+                                    <h4 class="text-sm font-bold text-blue-800 mb-1">本研究入選原因</h4>
+                                    <p id="p-reason" class="text-blue-700 text-sm leading-relaxed">公立系統的極致化，極低的財務負擔與生態融入設計。</p>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 pt-4 border-t border-slate-100">
+                                <a id="p-link" href="#" target="_blank" class="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors shadow-sm">
+                                    前往機構官網資訊
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            );
+            </div>
+        </section>
+
+        <!-- Table Section -->
+        <section id="table-section" class="scroll-mt-20 pt-8">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                綜合數據矩陣與量化比較表
+            </h2>
+            <div class="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200">
+                                <th class="py-4 px-6 font-semibold text-slate-700">機構名稱</th>
+                                <th class="py-4 px-6 font-semibold text-slate-700">機構類型</th>
+                                <th class="py-4 px-6 font-semibold text-slate-700">收費機制與財務輪廓</th>
+                                <th class="py-4 px-6 font-semibold text-slate-700">估算機車通勤</th>
+                                <th class="py-4 px-6 font-semibold text-slate-700">專屬特色與亮點簡述</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm text-slate-600" id="table-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Strategy Section -->
+        <section id="strategy-section" class="scroll-mt-20 pt-8 pb-12">
+            <div class="bg-emerald-50 rounded-3xl p-8 md:p-10 border border-emerald-100">
+                <h2 class="text-2xl font-bold text-emerald-900 mb-6">微觀區域幼托資源最佳化建議</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold text-lg mb-4">1</div>
+                        <h3 class="font-bold text-slate-800 mb-2">財務效益極大化</h3>
+                        <p class="text-slate-600">絕對優先將抽籤機率集中於<strong class="text-emerald-700">大有國小附幼</strong>與<strong class="text-emerald-700">會稽國小附幼</strong>。其每月極低的負擔加上高度穩定的國小編制資源，創造了無可比擬的財務與教育優勢。</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold text-lg mb-4">2</div>
+                        <h3 class="font-bold text-slate-800 mb-2">尋求時間彈性與多元活動</h3>
+                        <p class="text-slate-600">三之三生命教育基金會營運的非營利網絡（<strong class="text-emerald-700">經國、文華、龍祥</strong>）是最佳選擇。強調親職講座、傷病演練與飲食教育，提供等同於私立機構的豐富課程矩陣。</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold text-lg mb-4">3</div>
+                        <h3 class="font-bold text-slate-800 mb-2">生態與空間追求</h3>
+                        <p class="text-slate-600">新落成的<strong class="text-emerald-700">桃園市立桃園幼兒園</strong>具備綠建築與生態串聯；<strong class="text-emerald-700">新埔非營利幼兒園</strong>具備深度有機農業聚落整合，為幼童提供極佳環境教育場域。</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <div class="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center font-bold text-lg mb-4">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <h3 class="font-bold text-slate-800 mb-2">把握關鍵報名時程</h3>
+                        <p class="text-slate-600">第一階段線上登記將於<strong class="text-red-600">115年4月15日至4月17日</strong>開放。建議提前於4月7日透過「桃園市公立及非營利幼兒園招生網」確認名額。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-8 text-center">
+        <p class="text-sm">報告生成日期: 2026年4月 | 桃園市幼兒園空間與法規分析報告專屬介面</p>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script>
+        // Data derived from the research report
+        // Note: Coordinates are approximated around Taoyuan District relative to Minyou 3rd St. for visualization
+        const homeCoord = [25.0135, 121.3196]; // 民有三街概略座標
+
+        const institutions = [
+            {
+                id: 1,
+                name: "大有國小附設幼兒園",
+                type: "公立",
+                commute: "約 3 分鐘",
+                tuition: "第一胎1000元/月；其餘免繳",
+                features: "享政府高額學費減免與教育善好政策補助 4,500元助學金。",
+                reason: "距離最近，由人口政策驅動的結構性免負擔典範，擁有穩定的國小編制資源。",
+                lat: 25.0178, lng: 121.3204,
+                link: "https://www.tycg.gov.tw/ch/index.jsp" // Fallback query or actual if available
+            },
+            {
+                id: 2,
+                name: "會稽國小附設幼兒園",
+                type: "公立",
+                commute: "約 4 分鐘",
+                tuition: "學費免繳；午餐950元/月",
+                features: "收費極度透明；提供核准制之延長與過夜臨時照顧，適應非標準工時。",
+                reason: "提供極度透明的財務架構範本，且提供非標準工時家庭亟需的臨時與過夜照顧彈性。",
+                lat: 25.0152, lng: 121.3151,
+                link: "https://www.google.com/search?q=會稽國小附設幼兒園"
+            },
+            {
+                id: 3,
+                name: "新埔非營利幼兒園",
+                type: "非營利",
+                commute: "約 7 分鐘",
+                tuition: "非營利法定上限",
+                features: "由城鄉形象協會辦理；深度結合康莊有機聚落與好時節農場，提供系統性食農教育。",
+                reason: "專屬特色在於極度發達的農業教育整合網絡，為都市學童提供有機食農體驗。",
+                lat: 25.0211, lng: 121.3038,
+                link: "https://www.google.com/search?q=新埔非營利幼兒園"
+            },
+            {
+                id: 4,
+                name: "經國非營利幼兒園",
+                type: "非營利",
+                commute: "約 8 分鐘",
+                tuition: "非營利法定上限",
+                features: "三之三基金會營運；強調烘焙活動、生命教育與深入推動親職講座。",
+                reason: "大型基金會標準化營運，課程活動豐富，適合重視生命教育與親職參與的家庭。",
+                lat: 25.0323, lng: 121.3021,
+                link: "http://www.3-3life.org.tw/index.php?m=Yzy&a=yList&eId=36"
+            },
+            {
+                id: 5,
+                name: "文華非營利幼兒園",
+                type: "非營利",
+                commute: "約 8 分鐘",
+                tuition: "非營利法定上限",
+                features: "三之三基金會營運；注重幼童健康健檢、緊急傷病演練與社區資源活動結合。",
+                reason: "極度注重安全防護與傷病處置演練，提供家長安心的公私協力托育環境。",
+                lat: 25.0084, lng: 121.3047,
+                link: "https://www.google.com/search?q=桃園文華非營利幼兒園"
+            },
+            {
+                id: 6,
+                name: "龍祥非營利幼兒園",
+                type: "非營利",
+                commute: "約 8 分鐘",
+                tuition: "非營利法定上限",
+                features: "三之三基金會營運；強調飲食教育與大肌肉活動，嚴格環境消毒清潔。",
+                reason: "著重大肌肉發展與嚴謹的衛生管理，是高穩定度的非營利選擇。",
+                lat: 25.0001, lng: 121.2891,
+                link: "https://www.google.com/search?q=桃園龍祥非營利幼兒園"
+            },
+            {
+                id: 7,
+                name: "桃園市立桃園幼兒園",
+                type: "公立",
+                commute: "約 10 分鐘",
+                tuition: "第一胎1000元/月；其餘免繳",
+                features: "全新綠建築落成；融入特有種動物意象，動線串聯鄰近公園與生態資源。",
+                reason: "公立空間現代化升級的典範，無與倫比的綠建築硬體設施與生態教學環境。",
+                lat: 24.9965, lng: 121.3116,
+                link: "https://www.google.com/search?q=桃園市立桃園幼兒園"
+            },
+            {
+                id: 8,
+                name: "文德非營利幼兒園",
+                type: "非營利",
+                commute: "約 15-20 分鐘",
+                tuition: "非營利法定上限",
+                features: "由致力兒童安全的靖娟家族營運；強調交通安全資訊與親子感恩網絡活動。",
+                reason: "以兒童安全倡議聞名的基金會主導，擁有頂級的安全意識與家庭網絡凝聚力。",
+                lat: 25.0451, lng: 121.3121,
+                link: "https://family.safe.org.tw/27/wende/service_results/"
+            },
+            {
+                id: 9,
+                name: "大湖非營利幼兒園",
+                type: "非營利",
+                commute: "約 15-20 分鐘",
+                tuition: "非營利法定上限",
+                features: "教室模擬家庭環境設計；專設健康中心提供受傷/生病的第一時間處置。",
+                reason: "獨特的模擬家庭硬體設計與專屬健康中心，大幅降低幼童分離焦慮並確保醫護即時性。",
+                lat: 25.0511, lng: 121.3321,
+                link: "https://www.google.com/search?q=桃園大湖非營利幼兒園"
+            },
+            {
+                id: 10,
+                name: "祥安非營利幼兒園",
+                type: "非營利",
+                commute: "約 25 分鐘",
+                tuition: "非營利法定上限",
+                features: "112年全新完工，規模可招收136人；三之三基金會營運，推動社區親職與衛生宣導。",
+                reason: "政府擴張公托量能的新建指標設施，全新優質空間與成熟的基金會營運系統。",
+                lat: 24.9135, lng: 121.2268,
+                link: "http://www.3-3life.org.tw/index.php?m=Yzy&a=yList&eId=99"
+            }
+        ];
+
+        // 1. Initialize Map
+        const map = L.map('map').setView(homeCoord, 13); // Zoom level 13 to see Taoyuan nicely
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 2. Add Home Marker
+        const homeHtml = `<div class="marker-pin home"></div>`;
+        const homeIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: homeHtml,
+            iconSize: [30, 42],
+            iconAnchor: [15, 42]
+        });
+        
+        L.marker(homeCoord, {icon: homeIcon}).addTo(map)
+         .bindPopup('<b class="text-red-600">您的新家</b><br>桃園區民有三街16號')
+         .openPopup();
+
+        // 3. Populate Map Markers & Table
+        const tableBody = document.getElementById('table-body');
+        const markers = [];
+
+        institutions.forEach((inst, index) => {
+            // -- Add to Table --
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-teal-50 transition-colors cursor-pointer";
+            // Make table row click focus map marker
+            tr.onclick = () => {
+                map.flyTo([inst.lat, inst.lng], 15);
+                markers[index].openPopup();
+                updateDetailPanel(inst);
+                window.scrollTo({ top: document.getElementById('map-section').offsetTop - 20, behavior: 'smooth' });
+            };
+
+            tr.innerHTML = `
+                <td class="py-3 px-6 font-bold text-teal-700">${inst.name}</td>
+                <td class="py-3 px-6"><span class="px-2 py-1 rounded text-xs ${inst.type === '公立' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}">${inst.type}</span></td>
+                <td class="py-3 px-6">${inst.tuition}</td>
+                <td class="py-3 px-6">${inst.commute}</td>
+                <td class="py-3 px-6">${inst.features}</td>
+            `;
+            tableBody.appendChild(tr);
+
+            // -- Add to Map --
+            const schoolHtml = `<div class="marker-pin"></div>`;
+            const schoolIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: schoolHtml,
+                iconSize: [30, 42],
+                iconAnchor: [15, 42]
+            });
+
+            const marker = L.marker([inst.lat, inst.lng], {icon: schoolIcon}).addTo(map);
+            marker.bindPopup(`<b class="text-teal-700">${inst.name}</b><br><span class="text-xs text-slate-500">${inst.commute}</span>`);
+            
+            marker.on('click', function() {
+                updateDetailPanel(inst);
+            });
+
+            markers.push(marker);
+        });
+
+        // 4. Handle Detail Panel Updates
+        function updateDetailPanel(inst) {
+            document.getElementById('panel-empty').classList.add('hidden');
+            const content = document.getElementById('panel-content');
+            content.classList.remove('hidden');
+            content.classList.add('flex'); // Because default was flex-col but utility hidden overrides it, we swap it.
+
+            document.getElementById('p-name').textContent = inst.name;
+            
+            const typeBadge = document.getElementById('p-type');
+            typeBadge.textContent = inst.type;
+            if(inst.type === '公立') {
+                typeBadge.className = 'text-xs font-bold px-2 py-1 bg-blue-100 text-blue-800 rounded uppercase tracking-wider';
+            } else {
+                typeBadge.className = 'text-xs font-bold px-2 py-1 bg-emerald-100 text-emerald-800 rounded uppercase tracking-wider';
+            }
+
+            document.getElementById('p-commute').textContent = inst.commute;
+            document.getElementById('p-tuition').textContent = inst.tuition;
+            document.getElementById('p-features').textContent = inst.features;
+            document.getElementById('p-reason').textContent = inst.reason;
+            
+            const linkBtn = document.getElementById('p-link');
+            linkBtn.href = inst.link;
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
     </script>
 </body>
 </html>
