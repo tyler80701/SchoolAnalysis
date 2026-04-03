@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桃園區學前教育資源分析 - 民有三街核心區</title>
+    
+    <!-- Scripts & Styles CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Leaflet Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        #map { height: 100%; width: 100%; z-index: 1; }
+        .custom-div-icon { background: none; border: none; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const HOME_LOCATION = { lat: 25.0125, lng: 121.3168, name: "您的新家 (民有三街 16 號)" };
+
+        const KINDERGARTENS = [
+            { id: 1, name: "大有國小附設幼兒園", type: "公立", lat: 25.0145, lng: 121.3195, commute: "機車約 3 分鐘 / 步行約 12 分鐘", fee: "第一胎 1000 元/月；其餘免繳", reason: "位於大有教育走廊核心，享有政府高額學費減免，財務效益極大化。", features: "政府補助、小學資源共享、環境穩定", link: "https://www.gses.tyc.edu.tw/", category: "finance" },
+            { id: 2, name: "會稽國小附設幼兒園", type: "公立", lat: 25.0095, lng: 121.3125, commute: "機車約 4 分鐘 / 步行約 15 分鐘", fee: "學費免繳；午餐 950 元/月", reason: "收費透明，提供核准制之延長照顧，適合非標準工時家庭。", features: "延長照顧服務、透明財務、小學體系", link: "https://www.kjps.tyc.edu.tw/", category: "flexibility" },
+            { id: 3, name: "新埔非營利幼兒園", type: "非營利", lat: 25.0210, lng: 121.3050, commute: "機車約 7 分鐘", fee: "非營利法定上限", reason: "深度結合「康莊有機聚落」，提供系統性的食農教育。", features: "農業跨域整合、食農教育、專業營運", link: "https://www.facebook.com/xinpu.kindergarten/", category: "ecology" },
+            { id: 4, name: "經國非營利幼兒園", type: "非營利", lat: 25.0280, lng: 121.3020, commute: "機車約 8 分鐘", fee: "非營利法定上限", reason: "三之三基金會營運，強調生命教育與烘焙課程。", features: "生命教育、烘焙課程、親職教育", link: "http://www.3-3life.org.tw/", category: "flexibility" },
+            { id: 5, name: "文華非營利幼兒園", type: "非營利", lat: 25.0185, lng: 121.3285, commute: "機車約 8 分鐘", fee: "非營利法定上限", reason: "注重健康健檢與緊急演練，安全管理嚴格。", features: "健康健檢、安全演練、社區連結", link: "http://www.3-3life.org.tw/", category: "flexibility" },
+            { id: 6, name: "龍祥非營利幼兒園", type: "非營利", lat: 25.0350, lng: 121.3150, commute: "機車約 8 分鐘", fee: "非營利法定上限", reason: "強調飲食教育與大肌肉活動，防疫清潔制度完善。", features: "飲食教育、大肌肉活動、環境清潔", link: "http://www.3-3life.org.tw/", category: "flexibility" },
+            { id: 7, name: "桃園市立桃園幼兒園", type: "公立", lat: 25.0020, lng: 121.3110, commute: "機車約 10 分鐘", fee: "第一胎 1000 元/月；其餘免繳", reason: "全新綠建築，動線串聯鄰近公園，生態環境極佳。", features: "全新綠建築、生態觀賞、現代空間", link: "https://www.tykg.tyc.edu.tw/", category: "ecology" },
+            { id: 8, name: "文德非營利幼兒園", type: "非營利", lat: 24.9850, lng: 121.3250, commute: "機車約 15-20 分鐘", fee: "非營利法定上限", reason: "靖娟家族營運，極度強調交通安全資訊。", features: "交通安全推廣、靖娟家族、家長網絡", link: "https://family.safe.org.tw/27/wende/", category: "flexibility" },
+            { id: 9, name: "大湖非營利幼兒園", type: "非營利", lat: 24.9750, lng: 121.3350, commute: "機車約 15-20 分鐘", fee: "非營利法定上限", reason: "類家庭環境設計，設有專屬健康中心。", features: "類家庭環境、健康中心、情境教學", link: "https://www.facebook.com/dahu.kindergarten/", category: "flexibility" },
+            { id: 10, name: "祥安非營利幼兒園", type: "非營利", lat: 24.9250, lng: 121.2150, commute: "機車約 25 分鐘", fee: "非營利法定上限", reason: "大型全新園所，空間寬敞，強化消防宣導。", features: "全新校舍、消防宣導、大型規模", link: "http://www.3-3life.org.tw/", category: "flexibility" }
+        ];
+
+        function App() {
+            const [selectedId, setSelectedId] = useState(null);
+            const [map, setMap] = useState(null);
+
+            useEffect(() => {
+                const mapInstance = L.map('map').setView([HOME_LOCATION.lat, HOME_LOCATION.lng], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
+
+                // Home Marker
+                const homeIcon = L.divIcon({
+                    html: `<div style="background:#2563eb; color:white; padding:8px; border-radius:50%; border:2px solid white; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>`,
+                    className: 'custom-div-icon', iconSize: [36, 36], iconAnchor: [18, 18]
+                });
+                L.marker([HOME_LOCATION.lat, HOME_LOCATION.lng], { icon: homeIcon }).addTo(mapInstance).bindPopup("您的新家 (民有三街)");
+
+                // KG Markers
+                KINDERGARTENS.forEach(kg => {
+                    const color = kg.type === '公立' ? '#059669' : '#f97316';
+                    const icon = L.divIcon({
+                        html: `<div style="background:${color}; color:white; padding:6px; border-radius:50%; border:2px solid white; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path></svg></div>`,
+                        className: 'custom-div-icon', iconSize: [30, 30], iconAnchor: [15, 15]
+                    });
+                    L.marker([kg.lat, kg.lng], { icon }).addTo(mapInstance).on('click', () => setSelectedId(kg.id));
+                });
+
+                setMap(mapInstance);
+                return () => mapInstance.remove();
+            }, []);
+
+            const selectedKG = KINDERGARTENS.find(k => k.id === selectedId);
+
+            return (
+                <div className="min-h-screen">
+                    <header className="bg-white border-b h-16 flex items-center px-6 sticky top-0 z-[1000]">
+                        <h1 className="font-bold text-xl text-slate-800">桃園幼兒園資訊分析系統</h1>
+                    </header>
+
+                    <main className="max-w-7xl mx-auto px-4 py-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+                            <div className="lg:col-span-8 flex flex-col gap-4">
+                                <div className="bg-white p-2 rounded-2xl shadow-sm border h-[500px]">
+                                    <div id="map" className="rounded-xl"></div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="bg-white p-4 rounded-xl border">
+                                        <p className="text-xs text-slate-400 font-bold mb-1">精選機構</p>
+                                        <p className="text-2xl font-bold text-emerald-600">10 間</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-xl border">
+                                        <p className="text-xs text-slate-400 font-bold mb-1">違規紀錄</p>
+                                        <p className="text-2xl font-bold text-blue-600">0 筆</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-xl border">
+                                        <p className="text-xs text-slate-400 font-bold mb-1">最低負擔</p>
+                                        <p className="text-2xl font-bold text-orange-600">0 元/月</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="lg:col-span-4">
+                                <div className="bg-white rounded-2xl shadow-md border overflow-hidden h-full flex flex-col">
+                                    <div className="p-5 border-b bg-slate-50 font-bold">機構詳細資訊</div>
+                                    <div className="p-5 flex-1 overflow-y-auto">
+                                        {selectedKG ? (
+                                            <div className="space-y-4">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${selectedKG.type === '公立' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>{selectedKG.type}</span>
+                                                <h2 className="text-2xl font-bold">{selectedKG.name}</h2>
+                                                <div className="text-sm space-y-2">
+                                                    <p><strong>交通：</strong>{selectedKG.commute}</p>
+                                                    <p><strong>收費：</strong>{selectedKG.fee}</p>
+                                                    <p className="italic text-slate-600 mt-4 border-l-4 border-slate-200 pl-4">{selectedKG.reason}</p>
+                                                </div>
+                                                <div className="pt-4 flex flex-wrap gap-2">
+                                                    {selectedKG.features.split('、').map(f => <span key={f} className="bg-slate-100 px-2 py-1 rounded text-[10px]">{f}</span>)}
+                                                </div>
+                                                <a href={selectedKG.link} target="_blank" className="block w-full bg-slate-900 text-white text-center py-3 rounded-xl font-bold mt-6">前往官網</a>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-20 text-slate-400">請點擊地圖上的圖示查看資訊</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Table */}
+                        <section className="bg-white rounded-2xl border overflow-hidden shadow-sm">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b">
+                                    <tr>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-400">機構名稱</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-400">類型</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-400">收費基準</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-400">機車通勤</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {KINDERGARTENS.map(kg => (
+                                        <tr key={kg.id} onClick={() => setSelectedId(kg.id)} className="cursor-pointer hover:bg-slate-50">
+                                            <td className="px-6 py-4 font-bold">{kg.name}</td>
+                                            <td className="px-6 py-4 text-sm">{kg.type}</td>
+                                            <td className="px-6 py-4 text-sm">{kg.fee}</td>
+                                            <td className="px-6 py-4 text-sm">{kg.commute.split('/')[0]}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </section>
+                    </main>
+
+                    <footer className="py-12 text-center text-slate-400 text-xs">
+                        © 2026 桃園幼兒園空間分析報告
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
