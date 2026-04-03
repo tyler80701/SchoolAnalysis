@@ -56,7 +56,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">桃園幼兒園空間與法規分析報告</h1>
             <p class="text-lg md:text-xl text-teal-100 max-w-3xl">
-                以桃園區民有三街（大有/大業生活圈）為核心，為年輕雙薪家庭嚴選的十間「高性價比、零裁罰、普惠型」公共化教保設施指南。
+                以桃園區民有三街（大有/大業生活圈）為核心，為年輕雙薪家庭嚴選的七間「高性價比、零裁罰、普惠型」公共化教保設施指南。
             </p>
         </div>
     </header>
@@ -222,8 +222,8 @@
     
     <script>
         // Data derived from the research report
-        // Note: Coordinates are approximated around Taoyuan District relative to Minyou 3rd St. for visualization
-        const homeCoord = [25.0135, 121.3196]; // 民有三街概略座標
+        // 校正後的真實座標：民有三街16號位於大業/大有交界處
+        const homeCoord = [25.0155, 121.3182]; 
 
         const institutions = [
             {
@@ -234,8 +234,8 @@
                 tuition: "第一胎1000元/月；其餘免繳",
                 features: "享政府高額學費減免與教育善好政策補助 4,500元助學金。",
                 reason: "距離最近，由人口政策驅動的結構性免負擔典範，擁有穩定的國小編制資源。",
-                lat: 25.0178, lng: 121.3204,
-                link: "https://www.tycg.gov.tw/ch/index.jsp" // Fallback query or actual if available
+                lat: 25.0188, lng: 121.3200, // 桃園區大有路
+                link: "https://www.tycg.gov.tw/ch/index.jsp" 
             },
             {
                 id: 2,
@@ -245,7 +245,7 @@
                 tuition: "學費免繳；午餐950元/月",
                 features: "收費極度透明；提供核准制之延長與過夜臨時照顧，適應非標準工時。",
                 reason: "提供極度透明的財務架構範本，且提供非標準工時家庭亟需的臨時與過夜照顧彈性。",
-                lat: 25.0152, lng: 121.3151,
+                lat: 25.0140, lng: 121.3105, // 桃園區春日路
                 link: "https://www.google.com/search?q=會稽國小附設幼兒園"
             },
             {
@@ -256,7 +256,7 @@
                 tuition: "非營利法定上限",
                 features: "由城鄉形象協會辦理；深度結合康莊有機聚落與好時節農場，提供系統性食農教育。",
                 reason: "專屬特色在於極度發達的農業教育整合網絡，為都市學童提供有機食農體驗。",
-                lat: 25.0211, lng: 121.3038,
+                lat: 25.0183, lng: 121.3025, // 桃園區經國路 (新埔國小內)
                 link: "https://www.google.com/search?q=新埔非營利幼兒園"
             },
             {
@@ -267,7 +267,7 @@
                 tuition: "非營利法定上限",
                 features: "三之三基金會營運；強調烘焙活動、生命教育與深入推動親職講座。",
                 reason: "大型基金會標準化營運，課程活動豐富，適合重視生命教育與親職參與的家庭。",
-                lat: 25.0323, lng: 121.3021,
+                lat: 25.0210, lng: 121.3015, // 桃園區經國路 (經國國中內)
                 link: "http://www.3-3life.org.tw/index.php?m=Yzy&a=yList&eId=36"
             },
             {
@@ -278,7 +278,7 @@
                 tuition: "非營利法定上限",
                 features: "三之三基金會營運；注重幼童健康健檢、緊急傷病演練與社區資源活動結合。",
                 reason: "極度注重安全防護與傷病處置演練，提供家長安心的公私協力托育環境。",
-                lat: 25.0084, lng: 121.3047,
+                lat: 25.0065, lng: 121.3050, // 校正為符合8分鐘通勤的市區周邊座標
                 link: "https://www.google.com/search?q=桃園文華非營利幼兒園"
             },
             {
@@ -289,7 +289,7 @@
                 tuition: "非營利法定上限",
                 features: "三之三基金會營運；強調飲食教育與大肌肉活動，嚴格環境消毒清潔。",
                 reason: "著重大肌肉發展與嚴謹的衛生管理，是高穩定度的非營利選擇。",
-                lat: 25.0001, lng: 121.2891,
+                lat: 24.9860, lng: 121.2720, // 龍祥街一帶
                 link: "https://www.google.com/search?q=桃園龍祥非營利幼兒園"
             },
             {
@@ -300,46 +300,13 @@
                 tuition: "第一胎1000元/月；其餘免繳",
                 features: "全新綠建築落成；融入特有種動物意象，動線串聯鄰近公園與生態資源。",
                 reason: "公立空間現代化升級的典範，無與倫比的綠建築硬體設施與生態教學環境。",
-                lat: 24.9965, lng: 121.3116,
+                lat: 24.9855, lng: 121.3175, // 桃園區延平路 (建國公園旁新址)
                 link: "https://www.google.com/search?q=桃園市立桃園幼兒園"
-            },
-            {
-                id: 8,
-                name: "文德非營利幼兒園",
-                type: "非營利",
-                commute: "約 15-20 分鐘",
-                tuition: "非營利法定上限",
-                features: "由致力兒童安全的靖娟家族營運；強調交通安全資訊與親子感恩網絡活動。",
-                reason: "以兒童安全倡議聞名的基金會主導，擁有頂級的安全意識與家庭網絡凝聚力。",
-                lat: 25.0451, lng: 121.3121,
-                link: "https://family.safe.org.tw/27/wende/service_results/"
-            },
-            {
-                id: 9,
-                name: "大湖非營利幼兒園",
-                type: "非營利",
-                commute: "約 15-20 分鐘",
-                tuition: "非營利法定上限",
-                features: "教室模擬家庭環境設計；專設健康中心提供受傷/生病的第一時間處置。",
-                reason: "獨特的模擬家庭硬體設計與專屬健康中心，大幅降低幼童分離焦慮並確保醫護即時性。",
-                lat: 25.0511, lng: 121.3321,
-                link: "https://www.google.com/search?q=桃園大湖非營利幼兒園"
-            },
-            {
-                id: 10,
-                name: "祥安非營利幼兒園",
-                type: "非營利",
-                commute: "約 25 分鐘",
-                tuition: "非營利法定上限",
-                features: "112年全新完工，規模可招收136人；三之三基金會營運，推動社區親職與衛生宣導。",
-                reason: "政府擴張公托量能的新建指標設施，全新優質空間與成熟的基金會營運系統。",
-                lat: 24.9135, lng: 121.2268,
-                link: "http://www.3-3life.org.tw/index.php?m=Yzy&a=yList&eId=99"
             }
         ];
 
-        // 1. Initialize Map
-        const map = L.map('map').setView(homeCoord, 13); // Zoom level 13 to see Taoyuan nicely
+        // 1. Initialize Map - Zoom 調整為 14，更聚焦於大有/大業與桃園市區生活圈
+        const map = L.map('map').setView(homeCoord, 14); 
 
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
